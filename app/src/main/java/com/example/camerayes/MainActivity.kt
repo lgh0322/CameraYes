@@ -198,7 +198,7 @@ class MainActivity : AppCompatActivity() {
                 val   data = NV21toJPEG(
                     YUV_420_888toNV21(image),
                     image.getWidth(), image.getHeight());
-                File(PathUtil.getPathX(System.currentTimeMillis().toString()+".jpg")).writeBytes(data)
+               Log.e("fuckfuck",data.size.toString())
             }
             image.close()
 
