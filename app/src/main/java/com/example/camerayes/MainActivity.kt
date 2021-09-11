@@ -18,8 +18,11 @@ import android.view.TextureView
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.MutableLiveData
 import com.example.camerayes.databinding.ActivityMainBinding
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import org.json.JSONException
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.util.*
@@ -49,40 +52,15 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.fuck.surfaceTextureListener=object:TextureView.SurfaceTextureListener{
-            override fun onSurfaceTextureAvailable(p0: SurfaceTexture, p1: Int, p2: Int) {
-                startBackgroundThread()
-                openCamera()
-            }
-
-            override fun onSurfaceTextureSizeChanged(p0: SurfaceTexture, p1: Int, p2: Int) {
-
-            }
-
-            override fun onSurfaceTextureDestroyed(p0: SurfaceTexture): Boolean {
-                return false
-            }
-
-            override fun onSurfaceTextureUpdated(p0: SurfaceTexture) {
-
-            }
-
-        }
-
+        startBackgroundThread()
+        openCamera()
         binding.button.setOnClickListener {
             wantImg = true
 
         }
-
-
-
     }
 
 
-    override fun onResume() {
-        super.onResume()
-
-    }
 
     private fun startBackgroundThread() {
         mHandlerThread = HandlerThread("fuck")
@@ -147,15 +125,11 @@ class MainActivity : AppCompatActivity() {
             ImageFormat.YUV_420_888,
             2 /*最大的图片数，mImageReader里能获取到图片数，但是实际中是2+1张图片，就是多一张*/
         )
-        val texture = binding.fuck.surfaceTexture
 
-//      这里设置的就是预览大小
-        texture!!.setDefaultBufferSize(mPreviewSize!!.width, mPreviewSize!!.height)
-        val surface = Surface(texture)
+
 
         mPreviewBuilder.set(CaptureRequest.JPEG_ORIENTATION,mSensorOrientation)
         mPreviewBuilder.addTarget(mImageReader.surface)
-        mPreviewBuilder.addTarget(surface)
         mImageReader.setOnImageAvailableListener(
             { reader ->
                 mHandler.post(ImageSaver(reader))
@@ -164,7 +138,7 @@ class MainActivity : AppCompatActivity() {
 
 
         camera.createCaptureSession(
-            Arrays.asList(mImageReader.surface,surface),
+            Arrays.asList(mImageReader.surface),
             mSessionStateCallback,
             mHandler
         )
@@ -200,6 +174,12 @@ class MainActivity : AppCompatActivity() {
                     image.width, image.height
                 );
                Log.e("fuckfuck",data.size.toString()+"      "+image.width)
+
+                val bitmap=BitmapFactory.decodeStream(ByteArrayInputStream(data))
+                MainScope().launch {
+                    binding.fuck.setImageBitmap(bitmap)
+                }
+
             }
             image.close()
 
@@ -224,7 +204,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun closeCamera() {
-//        mCaptureSession.stopRepeating()
+        mCaptureSession.stopRepeating()
         mCaptureSession.close()
         mCameraDevice!!.close()
         mImageReader.close()
