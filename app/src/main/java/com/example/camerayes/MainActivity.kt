@@ -185,7 +185,7 @@ class MainActivity : AppCompatActivity() {
     private fun NV21toJPEG(nv21: ByteArray, width: Int, height: Int): ByteArray {
         val out = ByteArrayOutputStream()
         val yuv = YuvImage(nv21, ImageFormat.NV21, width, height, null)
-        yuv.compressToJpeg(Rect(0, 0, width, height), 60, out)
+        yuv.compressToJpeg(Rect(0, 0, width, height), 30, out)
         return out.toByteArray()
     }
 
@@ -197,8 +197,9 @@ class MainActivity : AppCompatActivity() {
                 wantImg=false
                 val   data = NV21toJPEG(
                     YUV_420_888toNV21(image),
-                    image.getWidth(), image.getHeight());
-               Log.e("fuckfuck",data.size.toString())
+                    image.width, image.height
+                );
+               Log.e("fuckfuck",data.size.toString()+"      "+image.width)
             }
             image.close()
 
