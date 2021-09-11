@@ -31,7 +31,7 @@ import java.io.ByteArrayOutputStream
 
 class MainActivity : AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
-    private var mSensorOrientation = 0
+
     private val mCameraId = "0" // gu 0: back 1: front camera
     lateinit var mPreviewSize: Size
     private val PREVIEW_WIDTH = 1920
@@ -43,8 +43,7 @@ class MainActivity : AppCompatActivity() {
     var wantImg = true
     private var mHandlerThread: HandlerThread? = null
     lateinit var mImageReader: ImageReader
-
-    val ff=MutableLiveData<Image>()
+    
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,9 +95,6 @@ class MainActivity : AppCompatActivity() {
         try {
             val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
             mPreviewSize = Size(PREVIEW_WIDTH, PREVIEW_HEIGHT)
-
-            val characteristics = cameraManager.getCameraCharacteristics(mCameraId)
-            mSensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION)!!
             cameraManager.openCamera(mCameraId, mCameraDeviceStateCallback, mHandler)
         } catch (e: CameraAccessException) {
             e.printStackTrace()
@@ -126,9 +122,6 @@ class MainActivity : AppCompatActivity() {
             2 /*最大的图片数，mImageReader里能获取到图片数，但是实际中是2+1张图片，就是多一张*/
         )
 
-
-
-        mPreviewBuilder.set(CaptureRequest.JPEG_ORIENTATION,mSensorOrientation)
         mPreviewBuilder.addTarget(mImageReader.surface)
         mImageReader.setOnImageAvailableListener(
             { reader ->
