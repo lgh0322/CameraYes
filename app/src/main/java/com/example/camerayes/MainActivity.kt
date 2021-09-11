@@ -20,6 +20,8 @@ import androidx.core.app.ActivityCompat
 import com.example.camerayes.databinding.ActivityMainBinding
 import org.json.JSONException
 import org.json.JSONObject
+import java.io.File
+import java.nio.ByteBuffer
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
@@ -40,6 +42,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        PathUtil.initVar(this)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -135,7 +138,15 @@ class MainActivity : AppCompatActivity() {
             val image = reader.acquireLatestImage() ?: return
             val width = image.width
             val height = image.height
-            Log.e("fuckaa","sdfjlksdjlk")
+            if(wantImg){
+                wantImg=false
+                val buffer: ByteBuffer = image.planes[0].buffer
+                val bytes = ByteArray(buffer.remaining())
+                buffer.get(bytes)
+                val fuck=System.currentTimeMillis().toString()+".jpg"
+                File(PathUtil.getPathX(fuck)).writeBytes(bytes)
+
+            }
 
             image.close()
         }
