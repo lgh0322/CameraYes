@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.ImageFormat
 import android.graphics.SurfaceTexture
 import android.hardware.camera2.*
+import android.media.Image
 import android.media.ImageReader
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -17,6 +18,7 @@ import android.util.Size
 import android.view.Surface
 import android.view.TextureView
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.MutableLiveData
 import com.example.camerayes.databinding.ActivityMainBinding
 import org.json.JSONException
 import org.json.JSONObject
@@ -26,8 +28,7 @@ import java.util.*
 
 class MainActivity : AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
-
-
+    private var mSensorOrientation = 0
     private val mCameraId = "0" // gu 0: back 1: front camera
     lateinit var mPreviewSize: Size
     private val PREVIEW_WIDTH = 1920
@@ -40,20 +41,53 @@ class MainActivity : AppCompatActivity() {
     private var mHandlerThread: HandlerThread? = null
     lateinit var mImageReader: ImageReader
 
+    val ff=MutableLiveData<Image>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         PathUtil.initVar(this)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        binding.fuck.surfaceTextureListener=object:TextureView.SurfaceTextureListener{
+            override fun onSurfaceTextureAvailable(p0: SurfaceTexture, p1: Int, p2: Int) {
+                startBackgroundThread()
+                openCamera()
+            }
 
+            override fun onSurfaceTextureSizeChanged(p0: SurfaceTexture, p1: Int, p2: Int) {
 
-        startBackgroundThread()
-        openCamera()
+            }
+
+            override fun onSurfaceTextureDestroyed(p0: SurfaceTexture): Boolean {
+                return false
+            }
+
+            override fun onSurfaceTextureUpdated(p0: SurfaceTexture) {
+
+            }
+
+        }
 
         binding.button.setOnClickListener {
-            wantImg=true
+            wantImg = true
         }
+
+
+        ff.observe(this,{
+            val buffer: ByteBuffer = it.planes[0].buffer
+//            val bytes = ByteArray(buffer.remaining())
+//            buffer.get(bytes)
+//            Log.e("suziejdfi", bytes.size.toString())
+
+            buffer.clear()
+            it.close()
+        })
+    }
+
+
+    override fun onResume() {
+        super.onResume()
 
     }
 
@@ -72,14 +106,17 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onDisconnected(camera: CameraDevice) {
+                Log.e("fuckCamera","a1")
                 camera.close()
             }
 
             override fun onError(camera: CameraDevice, error: Int) {
+                Log.e("fuckCamera","a2")
                 camera.close()
             }
 
             override fun onClosed(camera: CameraDevice) {
+                Log.e("fuckCamera","a3")
                 camera.close()
             }
         }
@@ -88,6 +125,9 @@ class MainActivity : AppCompatActivity() {
         try {
             val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
             mPreviewSize = Size(PREVIEW_WIDTH, PREVIEW_HEIGHT)
+
+            val characteristics = cameraManager.getCameraCharacteristics(mCameraId)
+            mSensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION)!!
             cameraManager.openCamera(mCameraId, mCameraDeviceStateCallback, mHandler)
         } catch (e: CameraAccessException) {
             e.printStackTrace()
@@ -114,10 +154,15 @@ class MainActivity : AppCompatActivity() {
             ImageFormat.JPEG,
             2 /*最大的图片数，mImageReader里能获取到图片数，但是实际中是2+1张图片，就是多一张*/
         )
+        val texture = binding.fuck.surfaceTexture
 
+//      这里设置的就是预览大小
+        texture!!.setDefaultBufferSize(mPreviewSize!!.width, mPreviewSize!!.height)
+        val surface = Surface(texture)
 
-        mPreviewBuilder.set(CaptureRequest.JPEG_ORIENTATION, 0)
+        mPreviewBuilder.set(CaptureRequest.JPEG_ORIENTATION,mSensorOrientation)
         mPreviewBuilder.addTarget(mImageReader.surface)
+        mPreviewBuilder.addTarget(surface)
         mImageReader.setOnImageAvailableListener(
             { reader ->
                 mHandler.post(ImageSaver(reader))
@@ -126,7 +171,7 @@ class MainActivity : AppCompatActivity() {
 
 
         camera.createCaptureSession(
-            Arrays.asList(mImageReader.surface),
+            Arrays.asList(mImageReader.surface,surface),
             mSessionStateCallback,
             mHandler
         )
@@ -136,19 +181,7 @@ class MainActivity : AppCompatActivity() {
     private inner class ImageSaver(var reader: ImageReader) : Runnable {
         override fun run() {
             val image = reader.acquireLatestImage() ?: return
-            val width = image.width
-            val height = image.height
-            if(wantImg){
-                wantImg=false
-                val buffer: ByteBuffer = image.planes[0].buffer
-                val bytes = ByteArray(buffer.remaining())
-                buffer.get(bytes)
-                val fuck=System.currentTimeMillis().toString()+".jpg"
-                File(PathUtil.getPathX(fuck)).writeBytes(bytes)
-
-            }
-
-            image.close()
+           ff.postValue(image)
         }
     }
 
@@ -164,17 +197,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
-        super.onPause()
         closeCamera()
+        super.onPause()
+
     }
 
     private fun closeCamera() {
         mCaptureSession.stopRepeating()
         mCaptureSession.close()
-        if (mCameraDevice != null) { //注意关闭顺序，先
-            mCameraDevice!!.close()
-            mCameraDevice = null
-        }
+        mCameraDevice!!.close()
         mImageReader.close()
         stopBackgroundThread()
     }
