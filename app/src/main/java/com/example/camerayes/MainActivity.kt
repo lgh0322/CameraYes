@@ -3,9 +3,7 @@ package com.example.camerayes
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.ImageFormat
-import android.graphics.SurfaceTexture
+import android.graphics.*
 import android.hardware.camera2.*
 import android.media.Image
 import android.media.ImageReader
@@ -25,6 +23,8 @@ import org.json.JSONObject
 import java.io.File
 import java.nio.ByteBuffer
 import java.util.*
+import java.io.ByteArrayOutputStream
+
 
 class MainActivity : AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
@@ -71,18 +71,11 @@ class MainActivity : AppCompatActivity() {
 
         binding.button.setOnClickListener {
             wantImg = true
+
         }
 
 
-        ff.observe(this,{
-            val buffer: ByteBuffer = it.planes[0].buffer
-//            val bytes = ByteArray(buffer.remaining())
-//            buffer.get(bytes)
-//            Log.e("suziejdfi", bytes.size.toString())
 
-            buffer.clear()
-            it.close()
-        })
     }
 
 
@@ -151,7 +144,7 @@ class MainActivity : AppCompatActivity() {
         mImageReader = ImageReader.newInstance(
             mPreviewSize.width,
             mPreviewSize.height,
-            ImageFormat.JPEG,
+            ImageFormat.YUV_420_888,
             2 /*最大的图片数，mImageReader里能获取到图片数，但是实际中是2+1张图片，就是多一张*/
         )
         val texture = binding.fuck.surfaceTexture
@@ -178,10 +171,37 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    private fun YUV_420_888toNV21(image: Image): ByteArray {
+        val nv21: ByteArray
+        val yBuffer = image.planes[0].buffer
+        val vuBuffer = image.planes[2].buffer
+        val ySize = yBuffer.remaining()
+        val vuSize = vuBuffer.remaining()
+        nv21 = ByteArray(ySize + vuSize)
+        yBuffer[nv21, 0, ySize]
+        vuBuffer[nv21, ySize, vuSize]
+        return nv21
+    }
+    private fun NV21toJPEG(nv21: ByteArray, width: Int, height: Int): ByteArray {
+        val out = ByteArrayOutputStream()
+        val yuv = YuvImage(nv21, ImageFormat.NV21, width, height, null)
+        yuv.compressToJpeg(Rect(0, 0, width, height), 60, out)
+        return out.toByteArray()
+    }
+
     private inner class ImageSaver(var reader: ImageReader) : Runnable {
         override fun run() {
             val image = reader.acquireLatestImage() ?: return
-           ff.postValue(image)
+
+            if(wantImg){
+                wantImg=false
+                val   data = NV21toJPEG(
+                    YUV_420_888toNV21(image),
+                    image.getWidth(), image.getHeight());
+                File(PathUtil.getPathX(System.currentTimeMillis().toString()+".jpg")).writeBytes(data)
+            }
+            image.close()
+
         }
     }
 
@@ -203,7 +223,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun closeCamera() {
-        mCaptureSession.stopRepeating()
+//        mCaptureSession.stopRepeating()
         mCaptureSession.close()
         mCameraDevice!!.close()
         mImageReader.close()
