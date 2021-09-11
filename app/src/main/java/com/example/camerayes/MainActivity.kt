@@ -72,17 +72,12 @@ class MainActivity : AppCompatActivity() {
                     mCameraDevice = camera
                     startPreview(camera)
             }
-
             override fun onDisconnected(camera: CameraDevice) {
                 camera.close()
-
             }
-
             override fun onError(camera: CameraDevice, error: Int) {
                 camera.close()
-
             }
-
             override fun onClosed(camera: CameraDevice) {
                 camera.close()
             }
