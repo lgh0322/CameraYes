@@ -69,27 +69,22 @@ class MainActivity : AppCompatActivity() {
     private val mCameraDeviceStateCallback: CameraDevice.StateCallback =
         object : CameraDevice.StateCallback() {
             override fun onOpened(camera: CameraDevice) {
-                try {
                     mCameraDevice = camera
                     startPreview(camera)
-                } catch (e: CameraAccessException) {
-                    e.printStackTrace()
-                }
             }
 
             override fun onDisconnected(camera: CameraDevice) {
                 camera.close()
-                mCameraDevice = null
+
             }
 
             override fun onError(camera: CameraDevice, error: Int) {
                 camera.close()
-                mCameraDevice = null
+
             }
 
             override fun onClosed(camera: CameraDevice) {
                 camera.close()
-                mCameraDevice = null
             }
         }
 
@@ -117,27 +112,19 @@ class MainActivity : AppCompatActivity() {
 
     private fun startPreview(camera: CameraDevice) {
         val texture = binding.ture.surfaceTexture
-        if (texture == null) {
-            Log.e("fuckfuck", "fuck")
-        }
         texture!!.setDefaultBufferSize(mPreviewSize.width, mPreviewSize.height)
         val surface = Surface(texture)
 
         mPreviewBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
 
 
-        val mImageReader = ImageReader.newInstance(
-            mPreviewSize.width,
-            mPreviewSize.height,
-            ImageFormat.YUV_420_888,
-            2
-        )
+
         mPreviewBuilder.set(CaptureRequest.JPEG_ORIENTATION, 0)
         mPreviewBuilder.addTarget(surface)
-        mPreviewBuilder.addTarget(mImageReader.surface)
+
 
         camera.createCaptureSession(
-            Arrays.asList(surface, mImageReader.surface),
+            Arrays.asList(surface),
             mSessionStateCallback,
             mHandler
         )
